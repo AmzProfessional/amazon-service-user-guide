@@ -94,4 +94,9 @@ const config: QuartzConfig = {
   },
 }
 
+// Add a configurable password for accessing '2 модуль'
+export const modulePasswords = {
+  module2: "defaultPassword123", // Change this password as needed
+};
+
 export default config
