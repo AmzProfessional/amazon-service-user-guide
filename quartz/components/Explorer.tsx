@@ -8,6 +8,7 @@ import { i18n } from "../i18n"
 import { FileTrieNode } from "../util/fileTrie"
 import OverflowListFactory from "./OverflowList"
 import { concatenateResources } from "../util/resources"
+// import modulesGuard from "./scripts/modules-guard.inline"
 
 type OrderEntries = "sort" | "filter" | "map"
 
@@ -55,14 +56,11 @@ export type FolderState = {
   collapsed: boolean
 }
 
-let numExplorers = 0
 export default ((userOpts?: Partial<Options>) => {
   const opts: Options = { ...defaultOptions, ...userOpts }
   const { OverflowList, overflowListAfterDOMLoaded } = OverflowListFactory()
 
   const Explorer: QuartzComponent = ({ cfg, displayClass }: QuartzComponentProps) => {
-    const id = `explorer-${numExplorers++}`
-
     return (
       <div
         class={classNames(displayClass, "explorer")}
@@ -80,7 +78,7 @@ export default ((userOpts?: Partial<Options>) => {
           type="button"
           class="explorer-toggle mobile-explorer hide-until-loaded"
           data-mobile={true}
-          aria-controls={id}
+          aria-controls="explorer-content"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -119,7 +117,7 @@ export default ((userOpts?: Partial<Options>) => {
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
-        <div id={id} class="explorer-content" aria-expanded={false} role="group">
+        <div class="explorer-content" aria-expanded={false}>
           <OverflowList class="explorer-ul" />
         </div>
         <template id="template-file">
@@ -160,6 +158,128 @@ export default ((userOpts?: Partial<Options>) => {
   }
 
   Explorer.css = style
-  Explorer.afterDOMLoaded = concatenateResources(script, overflowListAfterDOMLoaded)
+
+  Explorer.afterDOMLoaded = concatenateResources(
+    script,
+    overflowListAfterDOMLoaded,
+    `
+    /* ===== Explorer Modules Guard (ALL modules) ===== */
+    (function () {
+      const PERIOD_DAYS = 14;
+      const DEFAULT_PASSWORD = "12345";
+      const PASSWORDS_PER_MODULE = { /* "1 модуль": "m1", "2 модуль": "m2" */ };
+
+      const nowMs = () => Date.now();
+      const periodIndex = () => Math.floor(nowMs() / (PERIOD_DAYS * 86400e3));
+      const periodEndISO = () => new Date((periodIndex() + 1) * PERIOD_DAYS * 86400e3).toISOString();
+
+      // блокуємо "N модуль" або "N module"
+      const isModuleFolder = (name) => {
+        if (!name) return false;
+        return /^\\s*\\d+\\s*(модуль|module)/i.test(name.trim());
+      };
+
+      const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
+
+      const hasAccess = (folderName) => {
+        try {
+          const raw = localStorage.getItem(accessKey(folderName));
+          if (!raw) return false;
+          const data = JSON.parse(raw);
+          const granted = !!data.granted;
+          const expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : 0;
+          if (!granted) return false;
+          if (expiresAt && expiresAt < nowMs()) return false;
+          return true;
+        } catch { return false; }
+      };
+
+      const grantAccess = (folderName) => {
+        localStorage.setItem(
+          accessKey(folderName),
+          JSON.stringify({ granted: true, expiresAt: periodEndISO() })
+        );
+      };
+
+      const expectedPassword = (folderName) =>
+        PASSWORDS_PER_MODULE[folderName] ?? DEFAULT_PASSWORD;
+
+      const showPasswordModal = (folderName) => new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        Object.assign(overlay.style, { position: "fixed", inset: "0", background: "rgba(0,0,0,.35)", zIndex: 9998 });
+
+        const box = document.createElement("div");
+        Object.assign(box.style, {
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          background: "#fff", padding: "20px", borderRadius: "10px",
+          boxShadow: "0 8px 24px rgba(0,0,0,.2)", width: "min(420px,90vw)", zIndex: 9999
+        });
+
+        box.innerHTML =
+          '<h3 style="margin:0 0 12px 0">Введіть пароль для: <b>' + folderName + '</b></h3>' +
+          '<input id="module-pass" type="password" placeholder="Пароль" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px">' +
+          '<div id="module-err" style="color:#d11;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
+          '<div style="display:flex;gap:8px;margin-top:14px">' +
+            '<button id="module-ok" style="flex:1;padding:10px;border:0;border-radius:8px;cursor:pointer">Увійти</button>' +
+            '<button id="module-cancel" style="flex:1;padding:10px;border:0;border-radius:8px;background:#eee;cursor:pointer">Скасувати</button>' +
+          '</div>' +
+          '<div style="margin-top:10px;color:#666;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
+
+        const cleanup = () => { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
+
+        document.body.append(overlay, box);
+        document.body.style.overflow = "hidden";
+
+        const input = box.querySelector("#module-pass");
+        const err = box.querySelector("#module-err");
+
+        const submit = () => {
+          const pass = (input && input.value ? input.value : "").trim();
+          if (pass === expectedPassword(folderName)) { cleanup(); resolve(true); }
+          else { if (err) err.style.display = "block"; }
+        };
+
+        const okBtn = box.querySelector("#module-ok");
+        const cancelBtn = box.querySelector("#module-cancel");
+
+        okBtn?.addEventListener("click", submit);
+  input?.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+        cancelBtn?.addEventListener("click", () => { cleanup(); resolve(false); });
+        overlay.addEventListener("click", () => { cleanup(); resolve(false); });
+
+  input && input.focus();
+      });
+
+      // перехоплюємо клік у фазі capture (щоб встигнути заблокувати)
+      document.addEventListener("click", async (ev) => {
+        const el = ev.target;
+        if (!(el instanceof Element)) return;
+
+        const folderBtn = el.closest(".folder-button");
+        const folderTitle = el.closest(".folder-title");
+        if (!folderBtn && !folderTitle) return;
+
+        const titleEl = (folderTitle || (folderBtn ? folderBtn.querySelector(".folder-title") : null));
+        const folderName = (titleEl && titleEl.textContent ? titleEl.textContent : "").trim();
+
+        if (!isModuleFolder(folderName)) return;
+        if (hasAccess(folderName)) return;
+
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const ok = await showPasswordModal(folderName);
+        if (ok) {
+          grantAccess(folderName);
+          requestAnimationFrame(() => {
+            const target = folderBtn || folderTitle;
+            if (target) target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          });
+        }
+      }, true);
+    })();
+    `
+  )
+
   return Explorer
 }) satisfies QuartzComponentConstructor
