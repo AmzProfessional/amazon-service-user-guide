@@ -128,20 +128,6 @@ export default ((userOpts?: Partial<Options>) => {
         <template id="template-folder">
           <li>
             <div class="folder-container">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="5 8 14 8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="folder-icon"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
               <div>
                 <button class="folder-button">
                   <span class="folder-title"></span>
@@ -157,7 +143,7 @@ export default ((userOpts?: Partial<Options>) => {
     )
   }
 
-  Explorer.css = style
+    Explorer.css = style
 
   Explorer.afterDOMLoaded = concatenateResources(
     script,
@@ -204,53 +190,85 @@ export default ((userOpts?: Partial<Options>) => {
       const expectedPassword = (folderName) =>
         PASSWORDS_PER_MODULE[folderName] ?? DEFAULT_PASSWORD;
 
+      // === Модалка (blur фон, адаптація під темну тему, input не "вилазить") ===
       const showPasswordModal = (folderName) => new Promise((resolve) => {
-        const overlay = document.createElement("div");
-        Object.assign(overlay.style, { position: "fixed", inset: "0", background: "rgba(0,0,0,.35)", zIndex: 9998 });
+        var isDark = false;
+        try {
+          isDark =
+            (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ||
+            document.documentElement.classList.contains('dark') ||
+            document.body.classList.contains('dark');
+        } catch(e){}
 
-        const box = document.createElement("div");
-        Object.assign(box.style, {
-          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-          background: "#fff", padding: "20px", borderRadius: "10px",
-          boxShadow: "0 8px 24px rgba(0,0,0,.2)", width: "min(420px,90vw)", zIndex: 9999
+        var overlay = document.createElement("div");
+        Object.assign(overlay.style, {
+          position: "fixed",
+          inset: "0",
+          background: isDark ? "rgba(0,0,0,.45)" : "rgba(0,0,0,.35)",
+          zIndex: 9998,
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)"
         });
 
-        box.innerHTML =
-          '<h3 style="margin:0 0 12px 0">Введіть пароль для: <b>' + folderName + '</b></h3>' +
-          '<input id="module-pass" type="password" placeholder="Пароль" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px">' +
-          '<div id="module-err" style="color:#d11;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
-          '<div style="display:flex;gap:8px;margin-top:14px">' +
-            '<button id="module-ok" style="flex:1;padding:10px;border:0;border-radius:8px;cursor:pointer">Увійти</button>' +
-            '<button id="module-cancel" style="flex:1;padding:10px;border:0;border-radius:8px;background:#eee;cursor:pointer">Скасувати</button>' +
-          '</div>' +
-          '<div style="margin-top:10px;color:#666;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
+        var box = document.createElement("div");
+        Object.assign(box.style, {
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          background: isDark ? "#1f1f1f" : "#fff",
+          color: isDark ? "#f2f2f2" : "#111",
+          padding: "20px", borderRadius: "14px",
+          boxShadow: "0 12px 36px rgba(0,0,0,.35)",
+          width: "min(520px, 92vw)",
+          zIndex: 9999, fontFamily: "inherit"
+        });
 
-        const cleanup = () => { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
+        var inputStyle =
+          "width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid " + (isDark ? "#333" : "#ddd") +
+          ";border-radius:10px;background:" + (isDark ? "#2a2a2a" : "#fff") +
+          ";color:" + (isDark ? "#f2f2f2" : "#111") + ";outline:none";
+
+        var primaryBtn =
+          "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;" +
+          "background:" + (isDark ? "#2f2f3a" : "#2b2b33") + ";color:#fff";
+
+        var secondaryBtn =
+          "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;" +
+          "background:" + (isDark ? "#2a2a2a" : "#eee") + ";color:" + (isDark ? "#ddd" : "#333");
+
+        box.innerHTML =
+          '<h3 style="margin:0 0 12px 0;color:#fff">Введіть пароль для: <b>' + folderName + '</b></h3>' +
+          '<input id="module-pass" type="password" placeholder="Пароль" style="' + inputStyle + '">' +
+          '<div id="module-err" style="color:#e05252;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
+          '<div style="display:flex;gap:10px;margin-top:14px">' +
+            '<button id="module-ok" style="' + primaryBtn + '">Увійти</button>' +
+            '<button id="module-cancel" style="' + secondaryBtn + '">Скасувати</button>' +
+          '</div>' +
+          '<div style="margin-top:10px;opacity:.7;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
+
+        var cleanup = function() { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
 
         document.body.append(overlay, box);
         document.body.style.overflow = "hidden";
 
-        const input = box.querySelector("#module-pass");
-        const err = box.querySelector("#module-err");
+        var input = box.querySelector("#module-pass");
+        var err = box.querySelector("#module-err");
+        var okBtn = box.querySelector("#module-ok");
+        var cancelBtn = box.querySelector("#module-cancel");
 
-        const submit = () => {
-          const pass = (input && input.value ? input.value : "").trim();
+        var submit = function() {
+          var pass = (input && input.value ? input.value : "").trim();
           if (pass === expectedPassword(folderName)) { cleanup(); resolve(true); }
           else { if (err) err.style.display = "block"; }
         };
 
-        const okBtn = box.querySelector("#module-ok");
-        const cancelBtn = box.querySelector("#module-cancel");
+        okBtn && okBtn.addEventListener("click", submit);
+        input && input.addEventListener("keydown", function (e) { if (e && e.key === "Enter") submit(); });
+        cancelBtn && cancelBtn.addEventListener("click", function () { cleanup(); resolve(false); });
+        overlay.addEventListener("click", function () { cleanup(); resolve(false); });
 
-        okBtn?.addEventListener("click", submit);
-  input?.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-        cancelBtn?.addEventListener("click", () => { cleanup(); resolve(false); });
-        overlay.addEventListener("click", () => { cleanup(); resolve(false); });
-
-  input && input.focus();
+        input && input.focus();
       });
 
-      // перехоплюємо клік у фазі capture (щоб встигнути заблокувати)
+      // === Перехоплення кліків у фазі capture (щоб заблокувати до стандартної логіки) ===
       document.addEventListener("click", async (ev) => {
         const el = ev.target;
         if (!(el instanceof Element)) return;
@@ -277,9 +295,29 @@ export default ((userOpts?: Partial<Options>) => {
           });
         }
       }, true);
+
+      // === Guard для прямих лінків у середину модуля ===
+      (function () {
+        try {
+          var path = decodeURIComponent(location.pathname || "");
+          var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+          if (!first) return;
+          var normalized = first.replace(/-/g, " ").trim(); // "1-модуль" -> "1 модуль"
+          if (!isModuleFolder(normalized)) return;
+          if (hasAccess(normalized)) return;
+
+          showPasswordModal(normalized).then(function (ok) {
+            if (!ok) { try { location.href = "/"; } catch(e){} }
+          });
+        } catch(e){}
+      })();
+
     })();
     `
   )
 
   return Explorer
 }) satisfies QuartzComponentConstructor
+
+
+  
