@@ -298,47 +298,19 @@ export default ((userOpts?: Partial<Options>) => {
 
       // === Guard для прямих лінків у середину модуля ===
       (function () {
-  try {
-    // домашній префікс (працює і на /repo/ і на /)
-    var computeHomePath = function () {
-      var parts = (location.pathname || "/").split("/").filter(Boolean);
-      // якщо перший сегмент схожий на "2-модуль" — значить сайт у корені
-      if (parts.length === 0 || /^\d+/.test(parts[0])) return "/";
-      return "/" + parts[0] + "/";
-    };
-    var HOME = computeHomePath();
+        try {
+          var path = decodeURIComponent(location.pathname || "");
+          var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+          if (!first) return;
+          var normalized = first.replace(/-/g, " ").trim(); // "1-модуль" -> "1 модуль"
+          if (!isModuleFolder(normalized)) return;
+          if (hasAccess(normalized)) return;
 
-    // перший сегмент URL: /2-модуль/1-крок -> "2-модуль"
-    var path = decodeURIComponent(location.pathname || "");
-    var first = path.replace(/^\/+/, "").split("/")[0] || "";
-    if (!first) return;
-
-    // "1-модуль" -> "1 модуль"
-    var normalized = first.replace(/-/g, " ").trim();
-
-    if (!isModuleFolder(normalized)) return;
-    if (hasAccess(normalized)) return;
-
-    // миттєво ховаємо сторінку за оверлеєм з блюром
-    var cover = document.createElement("div");
-    Object.assign(cover.style, {
-      position: "fixed", inset: "0", zIndex: 9997,
-      background: "rgba(0,0,0,.5)",
-      backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)"
-    });
-    document.body.append(cover);
-    document.body.style.overflow = "hidden";
-
-    // просимо пароль; відмова -> редірект на домашню
-    showPasswordModal(normalized).then(function (ok) {
-      if (ok) {
-        try { cover.remove(); } catch(e){}
-        document.body.style.overflow = "";
-      } else {
-        try { location.href = HOME; } catch(e){}
-      }
-    });
-  } catch(e){}
+          showPasswordModal(normalized).then(function (ok) {
+            if (!ok) { try { location.href = "/"; } catch(e){} }
+          });
+        } catch(e){}
+      })();
 
     })();
     `
