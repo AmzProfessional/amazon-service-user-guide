@@ -1,5 +1,4 @@
 import { QuartzComponent, QuartzComponentConstructor, QuartzComponentProps } from "../types"
-
 import style from "../styles/listPage.scss"
 import { PageList, SortFn } from "../PageList"
 import { Root } from "hast"
@@ -10,10 +9,10 @@ import { ComponentChildren } from "preact"
 import { concatenateResources } from "../../util/resources"
 import { trieFromAllFiles } from "../../util/ctx"
 
+// @ts-ignore ─ глобальний guard (паролі, блюр, live-перевірка)
+import modulesGuard from "../scripts/modules-guard.inline"
+
 interface FolderContentOptions {
-  /**
-   * Whether to display number of folders
-   */
   showFolderCount: boolean
   showSubfolders: boolean
   sort?: SortFn
@@ -32,69 +31,35 @@ export default ((opts?: Partial<FolderContentOptions>) => {
 
     const trie = (props.ctx.trie ??= trieFromAllFiles(allFiles))
     const folder = trie.findNode(fileData.slug!.split("/"))
-    if (!folder) {
-      return null
-    }
+    if (!folder) return null
 
     const allPagesInFolder: QuartzPluginData[] =
       folder.children
         .map((node) => {
-          // regular file, proceed
-          if (node.data) {
-            return node.data
-          }
-
+          if (node.data) return node.data
           if (node.isFolder && options.showSubfolders) {
-            // folders that dont have data need synthetic files
             const getMostRecentDates = (): QuartzPluginData["dates"] => {
-              let maybeDates: QuartzPluginData["dates"] | undefined = undefined
+              let maybe: QuartzPluginData["dates"] | undefined
               for (const child of node.children) {
                 if (child.data?.dates) {
-                  // compare all dates and assign to maybeDates if its more recent or its not set
-                  if (!maybeDates) {
-                    maybeDates = { ...child.data.dates }
-                  } else {
-                    if (child.data.dates.created > maybeDates.created) {
-                      maybeDates.created = child.data.dates.created
-                    }
-
-                    if (child.data.dates.modified > maybeDates.modified) {
-                      maybeDates.modified = child.data.dates.modified
-                    }
-
-                    if (child.data.dates.published > maybeDates.published) {
-                      maybeDates.published = child.data.dates.published
-                    }
+                  if (!maybe) maybe = { ...child.data.dates }
+                  else {
+                    if (child.data.dates.created > maybe.created) maybe.created = child.data.dates.created
+                    if (child.data.dates.modified > maybe.modified) maybe.modified = child.data.dates.modified
+                    if (child.data.dates.published > maybe.published) maybe.published = child.data.dates.published
                   }
                 }
               }
-              return (
-                maybeDates ?? {
-                  created: new Date(),
-                  modified: new Date(),
-                  published: new Date(),
-                }
-              )
+              return maybe ?? { created: new Date(), modified: new Date(), published: new Date() }
             }
-
-            return {
-              slug: node.slug,
-              dates: getMostRecentDates(),
-              frontmatter: {
-                title: node.displayName,
-                tags: [],
-              },
-            }
+            return { slug: node.slug, dates: getMostRecentDates(), frontmatter: { title: node.displayName, tags: [] } }
           }
         })
         .filter((page) => page !== undefined) ?? []
+
     const cssClasses: string[] = fileData.frontmatter?.cssclasses ?? []
     const classes = cssClasses.join(" ")
-    const listProps = {
-      ...props,
-      sort: options.sort,
-      allFiles: allPagesInFolder,
-    }
+    const listProps = { ...props, sort: options.sort, allFiles: allPagesInFolder }
 
     const content = (
       (tree as Root).children.length === 0
@@ -122,5 +87,12 @@ export default ((opts?: Partial<FolderContentOptions>) => {
   }
 
   FolderContent.css = concatenateResources(style, PageList.css)
+
+  // 🔒 підключаємо guard тут, щоб він працював на сторінках модулів/уроків
+  FolderContent.afterDOMLoaded = concatenateResources(
+    FolderContent.afterDOMLoaded ?? "",
+    modulesGuard
+  )
+
   return FolderContent
 }) satisfies QuartzComponentConstructor
