@@ -143,29 +143,52 @@ export default ((userOpts?: Partial<Options>) => {
     )
   }
 
-    Explorer.css = style
+  Explorer.css = style
 
   Explorer.afterDOMLoaded = concatenateResources(
     script,
     overflowListAfterDOMLoaded,
     `
-    /* ===== Explorer Modules Guard (ALL modules) ===== */
+    /* ===== Explorer Modules Guard (ALL modules) — 30s period, global rotating password, live enforcement ===== */
     (function () {
-      const PERIOD_DAYS = 14;
-      const DEFAULT_PASSWORD = "12345";
-      const PASSWORDS_PER_MODULE = { /* "1 модуль": "m1", "2 модуль": "m2" */ };
+      // ---------- ПАРАМЕТРИ ПЕРІОДУ (ТЕСТ) ----------
+      const PERIOD_MS = 30_000; // 30 секунд (для тесту). Для прод: 14 * 86400e3
+      const SALT = "put-your-random-salt-here-8e5b9f-4b1c-9d77";
 
-      const nowMs = () => Date.now();
-      const periodIndex = () => Math.floor(nowMs() / (PERIOD_DAYS * 86400e3));
-      const periodEndISO = () => new Date((periodIndex() + 1) * PERIOD_DAYS * 86400e3).toISOString();
+      // індекс/кінець періоду
+      const periodIndex = () => Math.floor(Date.now() / PERIOD_MS);
+      const periodEndISO = () => new Date(Math.ceil(Date.now() / PERIOD_MS) * PERIOD_MS).toISOString();
 
-      // блокуємо "N модуль" або "N module"
-      const isModuleFolder = (name) => {
-        if (!name) return false;
-        return /^\\s*\\d+\\s*(модуль|module)/i.test(name.trim());
+      // ---------- ХЕЛПЕР «hash-like» (не крипто, як гейт ок) ----------
+      const hashLike = (s) => {
+        let h = 0 >>> 0;
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        // 12-символьний токен
+        const a = h.toString(36).padStart(7, "0");
+        const b = (h ^ 0x9e3779b9 >>> 0).toString(36).padStart(7, "0");
+        return (a + b).slice(0, 12);
       };
 
-      const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
+      // ---------- ПАРОЛІ ----------
+      // Пер-модульний ротаційний пароль (міняється разом з periodIndex)
+      const getRotatingPasswordFor = (folderName) =>
+        hashLike(SALT + ":" + periodIndex() + ":" + folderName);
+
+      // Глобальний ротаційний пароль (12 символів) — один на всі модулі в періоді
+      const getRotatingGlobalPassword = () =>
+        hashLike(SALT + ":" + periodIndex() + ":GLOBAL");
+
+      // (опційно) ручні паролі для конкретних модулів — мають пріоритет
+      const PASSWORDS_PER_MODULE = {
+        /* "1 модуль": "manualM1pass" */
+      };
+
+      // Який пароль очікуємо від користувача для конкретного модуля
+      const expectedPassword = (folderName) =>
+        (PASSWORDS_PER_MODULE[folderName] ?? getRotatingPasswordFor(folderName));
+
+      // ---------- ЗБЕРЕЖЕННЯ ДОСТУПУ (до кінця поточного періоду) ----------
+      const accessKey = (folderName) => "moduleAccess::" + folderName + "::p" + periodIndex();
 
       const hasAccess = (folderName) => {
         try {
@@ -175,7 +198,7 @@ export default ((userOpts?: Partial<Options>) => {
           const granted = !!data.granted;
           const expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : 0;
           if (!granted) return false;
-          if (expiresAt && expiresAt < nowMs()) return false;
+          if (expiresAt && expiresAt < Date.now()) return false;
           return true;
         } catch { return false; }
       };
@@ -187,10 +210,28 @@ export default ((userOpts?: Partial<Options>) => {
         );
       };
 
-      const expectedPassword = (folderName) =>
-        PASSWORDS_PER_MODULE[folderName] ?? DEFAULT_PASSWORD;
+      // ---------- ВИЗНАЧЕННЯ МОДУЛЯ ----------
+      const isModuleFolder = (name) => {
+        if (!name) return false;
+        return /^\\s*\\d+\\s*(модуль|module)/i.test(name.trim());
+      };
 
-      // === Модалка (blur фон, адаптація під темну тему, input не "вилазить") ===
+      const currentModuleFromURL = function () {
+        try {
+          var path = decodeURIComponent(location.pathname || "");
+          var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+          if (!first) return "";
+          return first.replace(/-/g, " ").trim(); // "1-модуль" -> "1 модуль"
+        } catch (e) { return ""; }
+      };
+
+      const computeHomePath = function () {
+        var parts = (location.pathname || "/").split("/").filter(Boolean);
+        if (parts.length === 0 || /^\\d+/.test(parts[0])) return "/";
+        return "/" + parts[0] + "/";
+      };
+
+      // ---------- МОДАЛКА (blur, контраст, адаптація теми) ----------
       const showPasswordModal = (folderName) => new Promise((resolve) => {
         var isDark = false;
         try {
@@ -213,8 +254,8 @@ export default ((userOpts?: Partial<Options>) => {
         var box = document.createElement("div");
         Object.assign(box.style, {
           position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
-          background: isDark ? "#1f1f1f" : "#fff",
-          color: isDark ? "#f2f2f2" : "#111",
+          background: isDark ? "#1f1f1f" : "#111",
+          color: "#fff",
           padding: "20px", borderRadius: "14px",
           boxShadow: "0 12px 36px rgba(0,0,0,.35)",
           width: "min(520px, 92vw)",
@@ -222,27 +263,24 @@ export default ((userOpts?: Partial<Options>) => {
         });
 
         var inputStyle =
-          "width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid " + (isDark ? "#333" : "#ddd") +
-          ";border-radius:10px;background:" + (isDark ? "#2a2a2a" : "#fff") +
-          ";color:" + (isDark ? "#f2f2f2" : "#111") + ";outline:none";
+          "width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid " + (isDark ? "#333" : "#444") +
+          ";border-radius:10px;background:" + (isDark ? "#2a2a2a" : "#1b1b1b") +
+          ";color:#fff;outline:none";
 
         var primaryBtn =
-          "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;" +
-          "background:" + (isDark ? "#2f2f3a" : "#2b2b33") + ";color:#fff";
-
+          "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:#3a3aff;color:#fff";
         var secondaryBtn =
-          "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;" +
-          "background:" + (isDark ? "#2a2a2a" : "#eee") + ";color:" + (isDark ? "#ddd" : "#333");
+          "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:" + (isDark ? "#2a2a2a" : "#2b2b33") + ";color:#ddd";
 
         box.innerHTML =
           '<h3 style="margin:0 0 12px 0;color:#fff">Введіть пароль для: <b>' + folderName + '</b></h3>' +
           '<input id="module-pass" type="password" placeholder="Пароль" style="' + inputStyle + '">' +
-          '<div id="module-err" style="color:#e05252;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
+          '<div id="module-err" style="color:#ff6b6b;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
           '<div style="display:flex;gap:10px;margin-top:14px">' +
             '<button id="module-ok" style="' + primaryBtn + '">Увійти</button>' +
             '<button id="module-cancel" style="' + secondaryBtn + '">Скасувати</button>' +
           '</div>' +
-          '<div style="margin-top:10px;opacity:.7;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
+          '<div style="margin-top:10px;opacity:.85;font-size:.9em">Доступ збережеться до кінця поточного періоду.</div>';
 
         var cleanup = function() { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
 
@@ -256,8 +294,12 @@ export default ((userOpts?: Partial<Options>) => {
 
         var submit = function() {
           var pass = (input && input.value ? input.value : "").trim();
-          if (pass === expectedPassword(folderName)) { cleanup(); resolve(true); }
-          else { if (err) err.style.display = "block"; }
+          // приймаємо або модульний, або ГЛОБАЛЬНИЙ ротаційний пароль
+          if (pass === expectedPassword(folderName) || pass === getRotatingGlobalPassword()) {
+            cleanup(); resolve(true);
+          } else {
+            if (err) err.style.display = "block";
+          }
         };
 
         okBtn && okBtn.addEventListener("click", submit);
@@ -268,7 +310,7 @@ export default ((userOpts?: Partial<Options>) => {
         input && input.focus();
       });
 
-      // === Перехоплення кліків у фазі capture (щоб заблокувати до стандартної логіки) ===
+      // ---------- Перехоплення кліків (capture) ----------
       document.addEventListener("click", async (ev) => {
         const el = ev.target;
         if (!(el instanceof Element)) return;
@@ -296,28 +338,93 @@ export default ((userOpts?: Partial<Options>) => {
         }
       }, true);
 
-      // === Guard для прямих лінків у середину модуля ===
+      // ---------- Guard для прямих лінків + Live enforcement по закінченню періоду ----------
       (function () {
-        try {
-          var path = decodeURIComponent(location.pathname || "");
-          var first = path.replace(/^\\/+/, "").split("/")[0] || "";
-          if (!first) return;
-          var normalized = first.replace(/-/g, " ").trim(); // "1-модуль" -> "1 модуль"
-          if (!isModuleFolder(normalized)) return;
-          if (hasAccess(normalized)) return;
+        var HOME = computeHomePath();
 
-          showPasswordModal(normalized).then(function (ok) {
-            if (!ok) { try { location.href = "/"; } catch(e){} }
+        var askOrRedirect = function (folderName) {
+          // блюр-покривало
+          var cover = document.createElement("div");
+          Object.assign(cover.style, {
+            position: "fixed", inset: "0", zIndex: 9997,
+            background: "rgba(0,0,0,.5)",
+            backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)"
           });
+          document.body.append(cover);
+          document.body.style.overflow = "hidden";
+
+          showPasswordModal(folderName).then(function (ok) {
+            if (ok) {
+              try { cover.remove(); } catch(e){}
+              document.body.style.overflow = "";
+              grantAccess(folderName);
+            } else {
+              try { location.href = HOME; } catch(e){}
+            }
+          });
+        };
+
+        // Одноразовий guard при заході напряму
+        try {
+          var mod0 = currentModuleFromURL();
+          if (mod0 && isModuleFolder(mod0) && !hasAccess(mod0)) {
+            askOrRedirect(mod0);
+          }
         } catch(e){}
+
+        // Live-enforcement: щосекунди перевіряємо валідність доступу
+        (function () {
+          var isPrompting = false;
+
+          var enforce = function () {
+            try {
+              var mod = currentModuleFromURL();
+              if (!mod || !isModuleFolder(mod)) return;
+
+              if (hasAccess(mod)) return;
+
+              if (isPrompting) return;
+              isPrompting = true;
+              askOrRedirect(mod);
+              setTimeout(function(){ isPrompting = false; }, 2000);
+            } catch(e){}
+          };
+
+          var iv = setInterval(enforce, 1000);
+          document.addEventListener("visibilitychange", enforce);
+          window.addEventListener("storage", enforce);
+        })();
       })();
 
+      // ---------- Hotkeys для адміна ----------
+      // Ctrl+Alt+P — пароль для поточного модуля (або попросить ввести назву)
+      // Ctrl+Alt+G — глобальний ротаційний пароль (12 символів)
+      document.addEventListener("keydown", function (e) {
+        try {
+          if (e.ctrlKey && e.altKey && e.key) {
+            var key = e.key.toLowerCase();
+
+            if (key === "p") {
+              var first = currentModuleFromURL();
+              var inferred = first && /^\\s*\\d+\\s*(модуль|module)/i.test(first) ? first : "";
+              var folderName = inferred || (prompt("Вкажіть назву модуля (наприклад: 2 модуль)") || "").trim();
+              if (!folderName) return;
+              var pass = expectedPassword(folderName);
+              alert("Модуль: " + folderName + "\\nПеріод: " + periodIndex() + "\\nПароль: " + pass);
+              return;
+            }
+
+            if (key === "g") {
+              var g = getRotatingGlobalPassword();
+              alert("Глобальний пароль (12 символів)\\nПеріод: " + periodIndex() + "\\nПароль: " + g);
+              return;
+            }
+          }
+        } catch(_) {}
+      });
     })();
     `
   )
 
   return Explorer
 }) satisfies QuartzComponentConstructor
-
-
-  
