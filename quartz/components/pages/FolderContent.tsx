@@ -10,7 +10,7 @@ import { concatenateResources } from "../../util/resources"
 import { trieFromAllFiles } from "../../util/ctx"
 
 // @ts-ignore ─ глобальний guard (паролі, блюр, live-перевірка)
-import modulesGuard from "../scripts/modules-guard.inline"
+
 
 interface FolderContentOptions {
   showFolderCount: boolean
@@ -88,11 +88,7 @@ export default ((opts?: Partial<FolderContentOptions>) => {
 
   FolderContent.css = concatenateResources(style, PageList.css)
 
-  // 🔒 підключаємо guard тут, щоб він працював на сторінках модулів/уроків
-  FolderContent.afterDOMLoaded = concatenateResources(
-    FolderContent.afterDOMLoaded ?? "",
-    modulesGuard
-  )
+
 
   return FolderContent
 }) satisfies QuartzComponentConstructor
