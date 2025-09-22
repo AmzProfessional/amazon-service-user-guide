@@ -261,7 +261,6 @@ export default ((userOpts?: Partial<Options>) => {
         box.innerHTML =
           '<h3 style="margin:0 0 12px 0;">Введіть пароль для: <b>' + folderName + '</b></h3>' +
           '<input id="module-pass" type="password" placeholder="Пароль (8 символів)" style="' + inputStyle + '">' +
-          '<div style="margin-top:6px;opacity:.8;font-size:.85em">Підказка: глобальний пароль цього періоду — <b>' + globalPassword() + '</b></div>' +
           '<div id="module-err" style="color:#ff6b6b;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
           '<div style="display:flex;gap:10px;margin-top:14px">' +
             '<button id="module-ok" style="' + primaryBtn + '">Увійти</button>' +
@@ -328,7 +327,6 @@ export default ((userOpts?: Partial<Options>) => {
               '<tbody>' + rows + '</tbody>' +
             '</table>' +
           '</div>' +
-          '<div style="margin-top:10px;opacity:.85;font-size:.9em">Глобальний пароль цього періоду: <b>' + globalPassword() + '</b></div>' +
           '<div style="display:flex;gap:10px;margin-top:14px">' +
             '<button id="pw-close" style="flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:#5b5bd6;color:#fff">Закрити</button>' +
           '</div>';
