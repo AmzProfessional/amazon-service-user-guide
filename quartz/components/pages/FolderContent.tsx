@@ -88,7 +88,5 @@ export default ((opts?: Partial<FolderContentOptions>) => {
 
   FolderContent.css = concatenateResources(style, PageList.css)
 
-
-
   return FolderContent
 }) satisfies QuartzComponentConstructor

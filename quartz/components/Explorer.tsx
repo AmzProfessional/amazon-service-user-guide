@@ -1,3 +1,4 @@
+
 import { QuartzComponent, QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import style from "./styles/explorer.scss"
 
@@ -8,7 +9,6 @@ import { i18n } from "../i18n"
 import { FileTrieNode } from "../util/fileTrie"
 import OverflowListFactory from "./OverflowList"
 import { concatenateResources } from "../util/resources"
-
 
 type OrderEntries = "sort" | "filter" | "map"
 
@@ -31,16 +31,13 @@ const defaultOptions: Options = {
     return node
   },
   sortFn: (a, b) => {
-    // Sort order: folders first, then files. Sort folders and files alphabeticall
+    // Sort order: folders first, then files. Sort folders and files alphabetically
     if ((!a.isFolder && !b.isFolder) || (a.isFolder && b.isFolder)) {
-      // numeric: true: Whether numeric collation should be used, such that "1" < "2" < "10"
-      // sensitivity: "base": Only strings that differ in base letters compare as unequal. Examples: a ≠ b, a = á, a = A
       return a.displayName.localeCompare(b.displayName, undefined, {
         numeric: true,
         sensitivity: "base",
       })
     }
-
     if (!a.isFolder && b.isFolder) {
       return 1
     } else {
@@ -85,9 +82,9 @@ export default ((userOpts?: Partial<Options>) => {
             width="24"
             height="24"
             viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             class="lucide-menu"
           >
             <line x1="4" x2="20" y1="12" y2="12" />
@@ -95,6 +92,7 @@ export default ((userOpts?: Partial<Options>) => {
             <line x1="4" x2="20" y1="18" y2="18" />
           </svg>
         </button>
+
         <button
           type="button"
           class="title-button explorer-toggle desktop-explorer"
@@ -109,22 +107,25 @@ export default ((userOpts?: Partial<Options>) => {
             viewBox="5 8 14 8"
             fill="none"
             stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             class="fold"
           >
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
+
         <div class="explorer-content" aria-expanded={false}>
           <OverflowList class="explorer-ul" />
         </div>
+
         <template id="template-file">
           <li>
             <a href="#"></a>
           </li>
         </template>
+
         <template id="template-folder">
           <li>
             <div class="folder-container">
@@ -175,7 +176,6 @@ export default ((userOpts?: Partial<Options>) => {
         let a = h1 ^ (h2 << 1);
         let b = h2 ^ (h1 << 1);
         for (let i = 0; i < 8; i++) {
-          // трохи перемішати кожен крок
           a = (Math.imul(a ^ (a >>> 13), 0x85ebca6b) + i) >>> 0;
           b = (Math.imul(b ^ (b >>> 16), 0xc2b2ae35) + (i<<2)) >>> 0;
           const v = (a ^ (b >>> 1)) >>> 0;
@@ -185,8 +185,8 @@ export default ((userOpts?: Partial<Options>) => {
       }
 
       // 📌 Пароль для модуля / глобальний
+      // **Не змінюємо цю логіку** — як попросили, паролі працюють і змінювати генерацію не треба.
       function passwordForModule(folderName) {
-        // якщо захочеш жорстко задати конкретному модулю — додай перевірку тут і поверни фіксований рядок
         const seed = SALT + "::MODULE::" + folderName + "::p" + periodIndex();
         return gen8(seed);
       }
@@ -195,11 +195,17 @@ export default ((userOpts?: Partial<Options>) => {
         return gen8(seed);
       }
 
-      // 🗂️ що є модулем (підтримує "1 модуль", "Модуль 1", "Модуль 3.1", "Module 2"…)
+      // 🗂️ що є модулем — гнучкіше розпізнавання (ловить "Модуль-8-—-...", "Модуль 4.2", "8 - Назва" тощо)
       const isModuleFolder = (name) => {
         if (!name) return false;
-        const t = name.trim();
-        return /^\\s*\\d+(?:\\.\\d+)?\\s*(модуль|module)/i.test(t) || /^(модуль|module)\\s*\\d+(?:\\.\\d+)?/i.test(t);
+        const t = String(name).trim();
+        // замінимо будь-які дефіси/тире/нижні підкреслення/довгі тире/двоєточчя на пробіл, щоб уніфікувати
+        const s = t.replace(/[-–—_:\\u2014]+/g, " ").replace(/\s+/g, " ").trim();
+        // Якщо є слово "модул..." або "module" поруч з числом — це модуль
+        if (/(?:\\bмодул\\w*\\b|\\bmodule\\b)\\s*\\d+(?:\\.\\d+)?/i.test(s)) return true;
+        // Якщо рядок починається з числа (8, 4.2 та ін.) — теж модуль
+        if (/^\\d+(?:\\.\\d+)?\\b/.test(s)) return true;
+        return false;
       };
 
       // 🎟️ ключ доступу в localStorage (прив’язаний до періоду)
@@ -259,7 +265,7 @@ export default ((userOpts?: Partial<Options>) => {
         var secondaryBtn = "flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:#444;color:#eee";
 
         box.innerHTML =
-          '<h3 style="margin:0 0 12px 0;">Введіть пароль для: <b>' + folderName + '</b></h3>' +
+          '<h3 style="margin:0 0 12px 0;color:#fff;">Введіть пароль для: <b>' + folderName + '</b></h3>' +
           '<input id="module-pass" type="password" placeholder="Пароль (8 символів)" style="' + inputStyle + '">' +
           '<div id="module-err" style="color:#ff6b6b;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
           '<div style="display:flex;gap:10px;margin-top:14px">' +
@@ -280,7 +286,6 @@ export default ((userOpts?: Partial<Options>) => {
 
         var submit = function() {
           var pass = (input && input.value ? input.value : "").trim();
-          // приймаємо або модульний, або глобальний пароль
           if (pass === passwordForModule(folderName) || pass === globalPassword()) { cleanup(); resolve(true); }
           else { if (err) err.style.display = "block"; }
         };
@@ -295,12 +300,10 @@ export default ((userOpts?: Partial<Options>) => {
 
       // === Модалка довідки: актуальні паролі (Ctrl+Alt+P) ===
       const showPasswordsHelp = () => {
-        // зібрати всі видимі модулі в Explorer
         var titles = Array.prototype.slice.call(document.querySelectorAll(".folder-title"))
           .map(function (el) { return el && el.textContent ? el.textContent.trim() : ""; })
           .filter(function (t) { return t && isModuleFolder(t); });
 
-        // унікальні та відсортовані
         var uniq = Array.from(new Set(titles)).sort(function(a,b){ return a.localeCompare(b, 'uk', {numeric:true, sensitivity:'base'}); });
 
         var overlay = mkOverlay(true);
@@ -308,25 +311,39 @@ export default ((userOpts?: Partial<Options>) => {
 
         var rows = uniq.map(function (name) {
           var pw = passwordForModule(name);
-          return '<tr><td style="padding:6px 10px;border-bottom:1px solid #3a3a44;white-space:nowrap;">' + name + '</td>' +
-                 '<td style="padding:6px 10px;border-bottom:1px solid #3a3a44;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">' + pw + '</td></tr>';
+          return '<tr><td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff; white-space:nowrap;">' + name + '</td>' +
+                 '<td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">' + pw + '</td></tr>';
         }).join("");
 
         if (!rows) {
-          rows = '<tr><td colspan="2" style="padding:10px;opacity:.8">Модулі не знайдені на цій сторінці.</td></tr>';
+          rows = '<tr><td colspan="2" style="padding:10px;opacity:.8;color:#fff">Модулі не знайдені на цій сторінці.</td></tr>';
         }
 
+        // Глобальний пароль і кінець періоду
+        var gpw = globalPassword();
+        var gpwUntil = periodEndISO();
+
         box.innerHTML =
-          '<h3 style="margin:0 0 12px 0;">Актуальні паролі (цього ' + PERIOD_DAYS + '-денного періоду)</h3>' +
-          '<div style="max-height:min(60vh,480px);overflow:auto;border:1px solid #3a3a44;border-radius:10px">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
+          '<h3 style="margin:0 0 12px 0;color:#fff">Актуальні паролі (цього ' + PERIOD_DAYS + '-денного періоду)</h3>' +
+          '<div style="max-height:min(60vh,480px);overflow:auto;border:1px solid #3a3a44;border-radius:10px;background:transparent;color:#fff">' +
+            '<table style="width:100%;border-collapse:collapse;font-size:14px;color:inherit">' +
               '<thead><tr>' +
-                '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44;opacity:.8">Модуль</th>' +
-                '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44;opacity:.8">Пароль</th>' +
+                '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44; color:#fff; opacity:.8">Модуль</th>' +
+                '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44; color:#fff; opacity:.8">Пароль</th>' +
               '</tr></thead>' +
               '<tbody>' + rows + '</tbody>' +
             '</table>' +
           '</div>' +
+
+          // Блок глобального пароля унизу
+          '<div style="margin-top:12px;padding:10px 12px;border:1px dashed #54545f;border-radius:10px;background:#23232b;color:#fff">' +
+            '<div style="font-weight:600;margin-bottom:6px;color:#fff">Глобальний пароль (діє до ' + gpwUntil.replace("T"," ").replace("Z"," UTC") + '):</div>' +
+            '<div style="display:flex;gap:8px;align-items:center;">' +
+              '<div id="gpw-val" style="flex:1;padding:8px 10px;border:1px solid #3a3a44;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff">' + gpw + '</div>' +
+              '<button id="gp-copy" style="padding:10px 12px;border:0;border-radius:8px;cursor:pointer;background:#5b5bd6;color:#fff">Скопіювати</button>' +
+            '</div>' +
+          '</div>' +
+
           '<div style="display:flex;gap:10px;margin-top:14px">' +
             '<button id="pw-close" style="flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:#5b5bd6;color:#fff">Закрити</button>' +
           '</div>';
@@ -336,9 +353,94 @@ export default ((userOpts?: Partial<Options>) => {
         document.body.append(overlay, box);
         document.body.style.overflow = "hidden";
 
+        // копіювання глобального пароля
+        box.querySelector("#gp-copy")?.addEventListener("click", function () {
+          try {
+            navigator.clipboard.writeText(gpw);
+            // короткий візуальний фідбек
+            var b = box.querySelector("#gp-copy");
+            var orig = b.textContent;
+            b.textContent = "Скопійовано";
+            setTimeout(function () { if (b) b.textContent = orig; }, 1200);
+          } catch(_) {}
+        });
+
         box.querySelector("#pw-close")?.addEventListener("click", cleanup);
         overlay.addEventListener("click", cleanup);
       };
+
+      // ----- START: Access monitor for staying-in-module detection -----
+      // Визначає модуль з URL (повертає нормалізовану першу частину з дефісами → пробіли)
+      function getModuleFromPath() {
+        try {
+          var path = decodeURIComponent(location.pathname || "");
+          var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+          if (!first) return null;
+          // замінюємо дефіси на пробіли, бо в назві можуть бути "Модуль-8-—-..."
+          var candidate = first.replace(/-/g, " ").replace(/_/g, " ").trim();
+          if (isModuleFolder(candidate)) return candidate;
+          // fallback: якщо на сторінці є .folder-title, беремо його
+          var ft = document.querySelector(".folder-title");
+          if (ft && ft.textContent) {
+            var txt = ft.textContent.trim();
+            if (isModuleFolder(txt)) return txt;
+          }
+          return null;
+        } catch (e) { return null; }
+      }
+
+      var _accessMonitorRunning = false;
+      function checkAccessForCurrentModule({ showModalIfMissing = true } = {}) {
+        try {
+          var moduleName = getModuleFromPath();
+          if (!moduleName) return false;
+          if (hasAccess(moduleName)) return true;
+          if (showModalIfMissing) {
+            if (_accessMonitorRunning) return false;
+            _accessMonitorRunning = true;
+            showPasswordModal(moduleName).then(function (ok) {
+              _accessMonitorRunning = false;
+              if (ok) {
+                try { grantAccess(moduleName); } catch(_) {}
+                try { location.reload(); } catch(_) {}
+              } else {
+                // якщо користувач відмовився — повертаємо на HOME
+                try { 
+                  var parts = (location.pathname || "/").split("/").filter(Boolean);
+                  if (parts.length === 0) { location.href = "/"; return; }
+                  // якщо перший сегмент не module-like, намагаємось взяти головну секцію
+                  var home = "/" + parts[0] + "/";
+                  location.href = home;
+                } catch(_) { try { location.href = "/"; } catch(__) {} }
+              }
+            }).catch(function(){ _accessMonitorRunning = false; });
+          }
+          return false;
+        } catch (e) { return false; }
+      }
+
+      function startAccessMonitor() {
+        setTimeout(function(){ checkAccessForCurrentModule({ showModalIfMissing: true }); }, 100);
+
+        window.addEventListener("focus", function () {
+          checkAccessForCurrentModule({ showModalIfMissing: true });
+        }, false);
+
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") {
+            checkAccessForCurrentModule({ showModalIfMissing: true });
+          }
+        });
+
+        var intervalMs = 1000;
+        setInterval(function () {
+          checkAccessForCurrentModule({ showModalIfMissing: true });
+        }, intervalMs);
+      }
+
+      // стартуємо монітор
+      startAccessMonitor();
+      // ----- END: Access monitor for staying-in-module detection -----
 
       // === Хоткей Ctrl+Alt+P — показати актуальні паролі
       document.addEventListener("keydown", function (e) {
@@ -382,7 +484,10 @@ export default ((userOpts?: Partial<Options>) => {
         try {
           var computeHomePath = function () {
             var parts = (location.pathname || "/").split("/").filter(Boolean);
-            if (parts.length === 0 || /^\\d+/.test(parts[0]) || /^модуль|module/i.test(decodeURIComponent(parts[0]).replace(/-/g," "))) return "/";
+            if (parts.length === 0) return "/";
+            // якщо перший сегмент виглядає як module — тоді домашня /
+            var firstDecoded = decodeURIComponent(parts[0]).replace(/-/g," ").trim();
+            if (isModuleFolder(firstDecoded)) return "/";
             return "/" + parts[0] + "/";
           };
           var HOME = computeHomePath();
@@ -418,4 +523,3 @@ export default ((userOpts?: Partial<Options>) => {
 
   return Explorer
 }) satisfies QuartzComponentConstructor
-

@@ -26,37 +26,37 @@ interface GraphOptions {
   globalGraph: Partial<D3Config> | undefined
 }
 
-const defaultOptions: GraphOptions = {
+const defaultOptions = {
   localGraph: {
     drag: true,
     zoom: true,
-    depth: 1,
-    scale: 1.1,
-    repelForce: 0.5,
-    centerForce: 0.3,
-    linkDistance: 30,
-    fontSize: 0.6,
-    opacityScale: 1,
+    depth: 2,
+    scale: 1.2,
+    repelForce: 1,
+    centerForce: 0.5,
+    linkDistance: 20,
+    fontSize: 0.8,
+    opacityScale: 2,
     showTags: true,
     removeTags: [],
     focusOnHover: false,
-    enableRadial: false,
+    enableRadial: false
   },
   globalGraph: {
     drag: true,
     zoom: true,
     depth: -1,
-    scale: 0.9,
-    repelForce: 0.5,
-    centerForce: 0.2,
-    linkDistance: 30,
-    fontSize: 0.6,
+    scale: 1.2,
+    repelForce: 9,
+    centerForce: 0.9,
+    linkDistance: 15,
+    fontSize: 1,
     opacityScale: 1,
     showTags: true,
     removeTags: [],
     focusOnHover: true,
-    enableRadial: true,
-  },
+    enableRadial: true
+  }
 }
 
 export default ((opts?: Partial<GraphOptions>) => {
