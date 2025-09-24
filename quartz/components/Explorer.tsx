@@ -185,7 +185,7 @@ export default ((userOpts?: Partial<Options>) => {
       }
 
       // 📌 Пароль для модуля / глобальний
-      // **Не змінюємо цю логіку** — як попросили, паролі працюють і змінювати генерацію не треба.
+      // **Не змінюємо цю логіку** — як просив, генерація пароля лишається як і раніше.
       function passwordForModule(folderName) {
         const seed = SALT + "::MODULE::" + folderName + "::p" + periodIndex();
         return gen8(seed);
@@ -195,20 +195,37 @@ export default ((userOpts?: Partial<Options>) => {
         return gen8(seed);
       }
 
-      // 🗂️ що є модулем — гнучкіше розпізнавання (ловить "Модуль-8-—-...", "Модуль 4.2", "8 - Назва" тощо)
+      // ---- УТИЛІТА: нормалізація назви модуля для порівнянь (не чіпаємо displayed title) ----
+      function normalizeModuleName(name) {
+        if (!name) return "";
+        try { name = String(decodeURIComponent(name)); } catch (e) { name = String(name); }
+        return name
+          .trim()
+          // замінимо дефіси/тире/підкреслення/довгі тире/коми/двоєточчя на пробіл
+          .replace(/[-–—_:\\u2014\\u2013,]+/g, " ")
+          // приберемо невидимі символи
+          .replace(/[\u200B-\u200D\uFEFF]/g, "")
+          // прибираємо усе, що не буква/цифра/пробіл/крапка (крапка лишається для 3.1, 4.2)
+          .replace(/[^\p{L}\p{N}\s\\.]/gu, "")
+          .replace(/\\s+/g, " ")
+          .toLowerCase();
+      }
+
+      // 🗂️ що є модулем — гнучке розпізнавання
       const isModuleFolder = (name) => {
         if (!name) return false;
         const t = String(name).trim();
-        // замінимо будь-які дефіси/тире/нижні підкреслення/довгі тире/двоєточчя на пробіл, щоб уніфікувати
-        const s = t.replace(/[-–—_:\\u2014]+/g, " ").replace(/\s+/g, " ").trim();
-        // Якщо є слово "модул..." або "module" поруч з числом — це модуль
-        if (/(?:\\bмодул\\w*\\b|\\bmodule\\b)\\s*\\d+(?:\\.\\d+)?/i.test(s)) return true;
-        // Якщо рядок починається з числа (8, 4.2 та ін.) — теж модуль
+        // уніфікуємо сепаратори в пробіли
+        const s = t.replace(/[-–—_:\\u2014\\u2013,]+/g, " ").replace(/\\s+/g, " ").trim();
+        // явні маркери поруч з числом
+        if (/(?:\\bмодул\\w*\\b|\\bmodule\\b|\\bкрок\\b|\\bstep\\b)\\s*\\d+(?:\\.\\d+)?/i.test(s)) return true;
+        // або рядок починається з числа (3, 3.1, 4.2)
         if (/^\\d+(?:\\.\\d+)?\\b/.test(s)) return true;
         return false;
       };
 
       // 🎟️ ключ доступу в localStorage (прив’язаний до періоду)
+      // Заувага: ключі зберігаються на основі exactly-the-displayed-folder-name (щоб не ламати існуючі записи).
       const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
       const hasAccess = (folderName) => {
         try {
@@ -252,6 +269,20 @@ export default ((userOpts?: Partial<Options>) => {
         return bx;
       };
 
+      // Утиліта: знайти канонічний displayed folder title по кандидат-рядку (normalize match)
+      function findCanonicalFolderTitle(candidate) {
+        try {
+          const cNorm = normalizeModuleName(candidate);
+          var els = Array.prototype.slice.call(document.querySelectorAll(".folder-title"));
+          for (var i = 0; i < els.length; i++) {
+            var t = els[i].textContent ? els[i].textContent.trim() : "";
+            if (!t) continue;
+            if (normalizeModuleName(t) === cNorm) return t;
+          }
+          return null;
+        } catch (e) { return null; }
+      }
+
       // === Модалка пароля для конкретного модуля ===
       const showPasswordModal = (folderName) => new Promise((resolve) => {
         var overlay = mkOverlay(true);
@@ -290,10 +321,30 @@ export default ((userOpts?: Partial<Options>) => {
           else { if (err) err.style.display = "block"; }
         };
 
+        // compute home for redirect on cancel
+        function computeHomePath() {
+          try {
+            var parts = (location.pathname || "/").split("/").filter(Boolean);
+            if (parts.length === 0) return "/";
+            // if first segment looks like module, go to "/"
+            var firstDecoded = decodeURIComponent(parts[0]).replace(/-/g," ").trim();
+            if (isModuleFolder(firstDecoded)) return "/";
+            return "/" + parts[0] + "/";
+          } catch (e) { return "/"; }
+        }
+
         okBtn && okBtn.addEventListener("click", submit);
         input && input.addEventListener("keydown", function (e) { if (e && e.key === "Enter") submit(); });
-        cancelBtn && cancelBtn.addEventListener("click", function () { cleanup(); resolve(false); });
-        overlay.addEventListener("click", function () { cleanup(); resolve(false); });
+        cancelBtn && cancelBtn.addEventListener("click", function () {
+          cleanup();
+          try { location.href = computeHomePath(); } catch(_) { try { location.href = "/"; } catch(e){} }
+          resolve(false);
+        });
+        overlay.addEventListener("click", function () {
+          cleanup();
+          try { location.href = computeHomePath(); } catch(_) { try { location.href = "/"; } catch(e){} }
+          resolve(false);
+        });
 
         input && input.focus();
       });
@@ -370,20 +421,28 @@ export default ((userOpts?: Partial<Options>) => {
       };
 
       // ----- START: Access monitor for staying-in-module detection -----
-      // Визначає модуль з URL (повертає нормалізовану першу частину з дефісами → пробіли)
+      // Визначає модуль з URL: знаходимо candidate, потім мапимо на канонічний folder-title (якщо є)
       function getModuleFromPath() {
         try {
           var path = decodeURIComponent(location.pathname || "");
           var first = path.replace(/^\\/+/, "").split("/")[0] || "";
           if (!first) return null;
-          // замінюємо дефіси на пробіли, бо в назві можуть бути "Модуль-8-—-..."
-          var candidate = first.replace(/-/g, " ").replace(/_/g, " ").trim();
-          if (isModuleFolder(candidate)) return candidate;
-          // fallback: якщо на сторінці є .folder-title, беремо його
+          // замінюємо дефіси/підкреслення на пробіли
+          var candidate = first.replace(/[-_]+/g, " ").trim();
+          // якщо candidate виглядає як модуль, намагаємось знайти канонічний folder-title з таким же normalized key
+          if (isModuleFolder(candidate)) {
+            var canon = findCanonicalFolderTitle(candidate);
+            if (canon) return canon; // повертаємо EXACT displayed title (щоб passwordForModule/accessKey збігалися)
+            // якщо не знайшли — повертаємо candidate як fallback (менше ймовірно, але safe)
+            return candidate;
+          }
+          // fallback: якщо на сторінці є .folder-title і вона модульна, беремо її
           var ft = document.querySelector(".folder-title");
           if (ft && ft.textContent) {
             var txt = ft.textContent.trim();
-            if (isModuleFolder(txt)) return txt;
+            if (isModuleFolder(txt)) {
+              return txt;
+            }
           }
           return null;
         } catch (e) { return null; }
@@ -405,12 +464,13 @@ export default ((userOpts?: Partial<Options>) => {
                 try { location.reload(); } catch(_) {}
               } else {
                 // якщо користувач відмовився — повертаємо на HOME
-                try { 
+                try {
+                  // compute home path similar to computeHomePath()
                   var parts = (location.pathname || "/").split("/").filter(Boolean);
                   if (parts.length === 0) { location.href = "/"; return; }
-                  // якщо перший сегмент не module-like, намагаємось взяти головну секцію
-                  var home = "/" + parts[0] + "/";
-                  location.href = home;
+                  var firstDecoded = decodeURIComponent(parts[0]).replace(/-/g," ").trim();
+                  if (isModuleFolder(firstDecoded)) { location.href = "/"; return; }
+                  location.href = "/" + parts[0] + "/";
                 } catch(_) { try { location.href = "/"; } catch(__) {} }
               }
             }).catch(function(){ _accessMonitorRunning = false; });
@@ -485,7 +545,6 @@ export default ((userOpts?: Partial<Options>) => {
           var computeHomePath = function () {
             var parts = (location.pathname || "/").split("/").filter(Boolean);
             if (parts.length === 0) return "/";
-            // якщо перший сегмент виглядає як module — тоді домашня /
             var firstDecoded = decodeURIComponent(parts[0]).replace(/-/g," ").trim();
             if (isModuleFolder(firstDecoded)) return "/";
             return "/" + parts[0] + "/";
@@ -499,14 +558,16 @@ export default ((userOpts?: Partial<Options>) => {
           var normalized = decodeURIComponent(first).replace(/-/g, " ").trim();
 
           if (!isModuleFolder(normalized)) return;
-          if (hasAccess(normalized)) return;
+          // витягуємо канонічний title (якщо знайшли) — для точності доступу
+          var canon = findCanonicalFolderTitle(normalized) || normalized;
+          if (hasAccess(canon)) return;
 
           var cover = mkOverlay(true);
           Object.assign(cover.style, { background: "rgba(0,0,0,.6)" });
           document.body.append(cover);
           document.body.style.overflow = "hidden";
 
-          showPasswordModal(normalized).then(function (ok) {
+          showPasswordModal(canon).then(function (ok) {
             if (ok) {
               try { cover.remove(); } catch(e){}
               document.body.style.overflow = "";
@@ -523,3 +584,4 @@ export default ((userOpts?: Partial<Options>) => {
 
   return Explorer
 }) satisfies QuartzComponentConstructor
+
