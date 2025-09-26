@@ -144,7 +144,6 @@ export default ((userOpts?: Partial<Options>) => {
     )
   }
 
-
 Explorer.css = style
 
 Explorer.afterDOMLoaded = concatenateResources(
@@ -219,6 +218,7 @@ Explorer.afterDOMLoaded = concatenateResources(
         backdropFilter: blur ? "blur(8px)" : "", WebkitBackdropFilter: blur ? "blur(8px)" : "" });
       return ov;
     };
+    
     const mkBox = () => {
       var bx = document.createElement("div");
       Object.assign(bx.style, { position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
@@ -239,12 +239,12 @@ Explorer.afterDOMLoaded = concatenateResources(
       box.innerHTML =
         '<h3 style="margin:0 0 12px 0;color:#fff;">Введіть пароль для: <b>' + folderName + '</b></h3>' +
         '<input id="module-pass" type="password" placeholder="Пароль (8 символів)" style="' + inputStyle + '">' +
-        '<div id="module-err" style="color:#ff6б6b;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
+        '<div id="module-err" style="color:#ff6b6b;margin:8px 0 0 0;display:none">Невірний пароль</div>' +
         '<div style="display:flex;gap:10px;margin-top:14px">' +
           '<button id="module-ok" style="' + primaryBtn + '">Увійти</button>' +
           '<button id="module-cancel" style="' + secondaryBtn + '">Скасувати</button>' +
         '</div>' +
-        '<div style="margin-top:10px;opacity:.9;font-size:.9ем">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
+        '<div style="margin-top:10px;opacity:.9;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
 
       var cleanup = function() { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
 
@@ -320,7 +320,7 @@ Explorer.afterDOMLoaded = concatenateResources(
         try {
           navigator.clipboard.writeText(gpw);
           var b = box.querySelector("#gp-copy");
-          var orig = b.textContent;
+        var orig = b.textContent;
           b.textContent = "Скопійовано";
           setTimeout(function () { if (b) b.textContent = orig; }, 1200);
         } catch(_) {}
@@ -332,55 +332,18 @@ Explorer.afterDOMLoaded = concatenateResources(
 
     /* ===== Stable Access Monitor (handles bfcache/history/DOM) ===== */
 
-    // === helpers to robustly map URL → exact module title ===
-    function normalizeName(s) {
-      return String(s || "")
-        .replace(/[-_–—]/g, " ")
-        .replace(/\\s+/g, " ")
-        .trim()
-        .toLowerCase();
-    }
-
-    function getAllModuleTitles() {
-      try {
-        return Array.prototype.slice.call(document.querySelectorAll(".folder-title"))
-          .map(function (el) { return el && el.textContent ? el.textContent.trim() : ""; })
-          .filter(function (t) { return t && isModuleFolder(t); });
-      } catch { return []; }
-    }
-
-    function resolveToExactTitle(candidate) {
-      var norm = normalizeName(candidate);
-      var titles = getAllModuleTitles();
-      for (var i = 0; i < titles.length; i++) {
-        if (normalizeName(titles[i]) === norm) return titles[i]; // повертаємо ПОВНІСТЮ ТОЧНИЙ заголовок
-      }
-      return candidate; // якщо точного збігу нема — повертаємо як є
-    }
-
-    // === NEW: find module name from ANY path segment and map it to exact sidebar title ===
     function getModuleFromPath() {
       try {
         var path = decodeURIComponent(location.pathname || "");
-        var parts = path.replace(/^\\/+/, "").split("/").filter(Boolean);
-        if (parts.length === 0) return null;
-
-        // 1) шукаємо сегмент, що виглядає як модуль
-        for (var i = 0; i < parts.length; i++) {
-          var segDec = decodeURIComponent(parts[i]).replace(/-/g, " ").replace(/_/g, " ").trim();
-          if (isModuleFolder(segDec)) {
-            // 2) зіставляємо з реальною назвою з сайдбару
-            return resolveToExactTitle(segDec);
-          }
-        }
-
-        // 3) fallback по сайдбару
+        var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+        if (!first) return null;
+        var candidate = first.replace(/-/g, " ").replace(/_/g, " ").trim();
+        if (isModuleFolder(candidate)) return candidate;
         var ft = document.querySelector(".folder-title");
         if (ft && ft.textContent) {
           var txt = ft.textContent.trim();
           if (isModuleFolder(txt)) return txt;
         }
-
         return null;
       } catch { return null; }
     }
