@@ -1,5 +1,5 @@
 ---
-title: Welcome to Quartz
+title: Welcome to Amazon Service
 ---
 
 This is a blank Quartz installation.
