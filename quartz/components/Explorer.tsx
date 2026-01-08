@@ -239,16 +239,48 @@ Explorer.afterDOMLoaded = concatenateResources(
 
       var submit = function() {
         var pass = (input && input.value ? input.value : "").trim();
-        if (pass === passwordForModule(folderName) || pass === globalPassword()) { cleanup(); resolve(true); }
-        else { if (err) err.style.display = "block"; }
+        if (pass === passwordForModule(folderName) || pass === globalPassword()) { 
+          cleanup(); 
+          resolve(true); 
+        }
+        else { 
+          if (err) err.style.display = "block"; 
+        }
       };
 
       okBtn && okBtn.addEventListener("click", submit);
       input && input.addEventListener("keydown", function (e) { if (e && e.key === "Enter") submit(); });
-      cancelBtn && cancelBtn.addEventListener("click", function () { cleanup(); resolve(false); });
-      overlay.addEventListener("click", function () { cleanup(); resolve(false); });
+
+      // Оновлений обробник для кнопки "Скасувати"
+      cancelBtn && cancelBtn.addEventListener("click", function () { 
+        cleanup(); 
+        window.location.href = "https://amzprofessional.github.io/amazon-service-user-guide/";  // Перехід на головну сторінку
+        resolve(false); 
+      });
+
+      overlay.addEventListener("click", function () { 
+        cleanup(); 
+        window.location.href = "https://amzprofessional.github.io/amazon-service-user-guide/";  // Перехід на головну сторінку
+        resolve(false); 
+      });
 
       input && input.focus();
+    });
+
+    // Обробник події для натискання на папки
+    document.addEventListener('click', function (event) {
+      var clickedElement = event.target;
+      
+      if (clickedElement && clickedElement.classList.contains('folder-title')) {
+        var folderName = clickedElement.textContent.trim();
+        if (staticPasswords[folderName]) {
+          showPasswordModal(folderName).then((accessGranted) => {
+            if (accessGranted) {
+              console.log("Доступ дозволено до папки: " + folderName);
+            }
+          });
+        }
+      }
     });
 
     const showPasswordsHelp = () => {
@@ -306,6 +338,5 @@ Explorer.afterDOMLoaded = concatenateResources(
   })();
   `
 )
-
   return Explorer
 }) satisfies QuartzComponentConstructor
