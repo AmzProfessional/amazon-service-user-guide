@@ -162,20 +162,19 @@ Explorer.afterDOMLoaded = concatenateResources(
     // === Статичні паролі для кожного модуля
     const MODULE_PASSWORDS = {
       "2. Dashboard": "Dsh8KqM9",
-      "3. Поставщики услуг": "PrvSvc4X",
-      "3. Service Provider": "Vcd5rc6W",
-      "4. Инвентарь": "Inv2Wsx7",
-      "5. Запуск продукта": "Lnch5Zaq",
-      "6. Биржа товаров": "Exch9Plp",
-      "7. Заказы": "Ord3Mnd8",
-      "8. Мой склад": "Wrh6Fgh2",
-      "9. Мои партии": "Batch7Kjh",
-      "10. Магазины": "Shop4Bnm1",
-      "11. Финансы": "Fin8Vcd5",
-      "12. Уведомления": "Notif3Wsx",
-      "13. Поддержка": "Supp2Qwe",
-      "14. Сообщения": "Msg9Asd6",
-      "15. Версия платформы": "Ver5Zxc4"
+      "3. Service provider": "PrvSvc4X",
+      "4. Inventory": "Inv2Wsx7",
+      "5. Product launch": "Lnch5Zaq",
+      "6. Commodity exchange": "Exch9Plp",
+      "7. Orders": "Ord3Mnd8",
+      "8. My warehouse": "Wrh6Fgh2",
+      "9. My batches": "Batch7Kjh",
+      "10. Shops": "Shop4Bnm1",
+      "11. Finances": "Fin8Vcd5",
+      "12. Notifications": "Notif3Wsx",
+      "13. Support": "Supp2Qwe",
+      "14. Messages": "Msg9Asd6",
+      "15. Platform version": "Ver5Zxc4"
     };
     const GLOBAL_PASSWORD = "Global8Df";
 
