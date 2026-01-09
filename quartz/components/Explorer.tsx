@@ -203,9 +203,7 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (firstChar < 48 || firstChar > 57) return false;
       // Перевіримо чи другой або третій символ - це крапка
       const dotIndex = t.indexOf('.');
-      const isModule = dotIndex === 1 || dotIndex === 2;
-      console.log("  isModuleFolder для '" + t + "':", isModule, "(dotIndex=" + dotIndex + ")");
-      return isModule;
+      return dotIndex === 1 || dotIndex === 2;
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
@@ -496,8 +494,6 @@ Explorer.afterDOMLoaded = concatenateResources(
 
       var folderName = titleEl.textContent ? titleEl.textContent.trim() : "";
       if (!folderName) return;
-
-      console.log("🔍 Клік на папку:", folderName, "| isModule:", isModuleFolder(folderName), "| hasAccess:", hasAccess(folderName));
 
       if (!isModuleFolder(folderName)) return;
       if (hasAccess(folderName)) return;
