@@ -276,97 +276,14 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (clickedElement && clickedElement.classList.contains('folder-title')) {
         var folderName = clickedElement.textContent.trim();
         if (staticPasswords[folderName]) {
+          // Зупинити перехід на нову сторінку
+          event.preventDefault();
           // Відкриття модального вікна для введення пароля
           showPasswordModal(folderName).then((accessGranted) => {
             if (accessGranted) {
               console.log("Доступ дозволено до папки: " + folderName);
-            }
-          });
-        }
-      }
-    });
-
-    const showPasswordsHelp = () => {
-      var titles = Array.prototype.slice.call(document.querySelectorAll(".folder-title"))
-        .map(function (el) { return el && el.textContent ? el.textContent.trim() : ""; })
-        .filter(function (t) { return t && staticPasswords[t]; });
-      var uniq = Array.from(new Set(titles)).sort(function(a,b){ return a.localeCompare(b, 'uk', {numeric:true, sensitivity:'base'}); });
-      var overlay = mkOverlay(true);
-      var box = mkBox();
-
-      var rows = uniq.map(function (name) {
-        var pw = staticPasswords[name];
-        return '<tr><td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff; white-space:nowrap;">' + name + '</td>' +
-               '<td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">' + pw + '</td></tr>';
-      }).join("");
-
-      if (!rows) rows = '<tr><td colspan="2" style="padding:10px;opacity:.8">Модулі не знайдені на цій сторінці.</td></tr>';
-
-      box.innerHTML =
-        '<h3 style="margin:0 0 12px 0;">Актуальні паролі</h3>' +
-        '<div style="max-height:min(60vh,480px);overflow:auto;border:1px solid #3a3a44;border-radius:10px">' +
-          '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
-            '<thead><tr>' +
-              '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44; color:#fff; opacity:.8">Модуль</th>' +
-              '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44; color:#fff; opacity:.8">Пароль</th>' +
-            '</tr></thead>' +
-            '<tbody>' + rows + '</tbody>' +
-          '</table>' +
-        '</div>' +
-        '<div style="display:flex;gap:10px;margin-top:14px">' +
-          '<button id="pw-close" style="flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:#5b5bd6;color:#fff">Закрити</button>' +
-        '</div>';
-
-      var cleanup = function() { document.body.style.overflow
-
-      document.body.append(overlay, box);
-      document.body.style.overflow = "hidden";
-
-      var input = box.querySelector("#module-pass");
-      var err = box.querySelector("#module-err");
-      var okBtn = box.querySelector("#module-ok");
-      var cancelBtn = box.querySelector("#module-cancel");
-
-      var submit = function() {
-        var pass = (input && input.value ? input.value : "").trim();
-        if (pass === passwordForModule(folderName) || pass === globalPassword()) { 
-          cleanup(); 
-          resolve(true); 
-        }
-        else { 
-          if (err) err.style.display = "block"; 
-        }
-      };
-
-      okBtn && okBtn.addEventListener("click", submit);
-      input && input.addEventListener("keydown", function (e) { if (e && e.key === "Enter") submit(); });
-
-      // Оновлений обробник для кнопки "Скасувати"
-      cancelBtn && cancelBtn.addEventListener("click", function () { 
-        cleanup(); 
-        window.location.href = "https://amzprofessional.github.io/amazon-service-user-guide/";  // Перехід на головну сторінку
-        resolve(false); 
-      });
-
-      overlay.addEventListener("click", function () { 
-        cleanup(); 
-        window.location.href = "https://amzprofessional.github.io/amazon-service-user-guide/";  // Перехід на головну сторінку
-        resolve(false); 
-      });
-
-      input && input.focus();
-    });
-
-    // Обробник події для натискання на папки
-    document.addEventListener('click', function (event) {
-      var clickedElement = event.target;
-      
-      if (clickedElement && clickedElement.classList.contains('folder-title')) {
-        var folderName = clickedElement.textContent.trim();
-        if (staticPasswords[folderName]) {
-          showPasswordModal(folderName).then((accessGranted) => {
-            if (accessGranted) {
-              console.log("Доступ дозволено до папки: " + folderName);
+              // Якщо пароль вірний, дозволяємо перехід
+              window.location.href = clickedElement.closest("a").href;
             }
           });
         }
@@ -428,5 +345,6 @@ Explorer.afterDOMLoaded = concatenateResources(
   })();
   `
 )
+
   return Explorer
 }) satisfies QuartzComponentConstructor
