@@ -144,8 +144,6 @@ export default ((userOpts?: Partial<Options>) => {
     )
   }
 
-Explorer.css = style
-
 Explorer.afterDOMLoaded = concatenateResources(
   script,
   overflowListAfterDOMLoaded,
@@ -213,7 +211,7 @@ Explorer.afterDOMLoaded = concatenateResources(
           '<button id="module-ok" style="' + primaryBtn + '">Увійти</button>' +
           '<button id="module-cancel" style="' + secondaryBtn + '">Скасувати</button>' +
         '</div>' +
-        '<div style="margin-top:10px;opacity:.9;font-size:.9em">Доступ збережеться до кінця поточного 14-денного періоду.</div>';
+        '<div style="margin-top:10px;opacity:.9;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
 
       var cleanup = function() { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
 
@@ -276,59 +274,6 @@ Explorer.afterDOMLoaded = concatenateResources(
         }
       }
     });
-
-    const showPasswordsHelp = () => {
-      var titles = Array.prototype.slice.call(document.querySelectorAll(".folder-title"))
-        .map(function (el) { return el && el.textContent ? el.textContent.trim() : ""; })
-        .filter(function (t) { return t && staticPasswords[t]; });
-      var uniq = Array.from(new Set(titles)).sort(function(a,b){ return a.localeCompare(b, 'uk', {numeric:true, sensitivity:'base'}); });
-      var overlay = mkOverlay(true);
-      var box = mkBox();
-
-      var rows = uniq.map(function (name) {
-        var pw = staticPasswords[name];
-        return '<tr><td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff; white-space:nowrap;">' + name + '</td>' +
-               '<td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">' + pw + '</td></tr>';
-      }).join("");
-
-      if (!rows) rows = '<tr><td colspan="2" style="padding:10px;opacity:.8">Модулі не знайдені на цій сторінці.</td></tr>';
-
-      box.innerHTML =
-        '<h3 style="margin:0 0 12px 0;">Актуальні паролі</h3>' +
-        '<div style="max-height:min(60vh,480px);overflow:auto;border:1px solid #3a3a44;border-radius:10px">' +
-          '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
-            '<thead><tr>' +
-              '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44; color:#fff; opacity:.8">Модуль</th>' +
-              '<th style="text-align:left;padding:8px 10px;border-bottom:1px solid #3a3a44; color:#fff; opacity:.8">Пароль</th>' +
-            '</tr></thead>' +
-            '<tbody>' + rows + '</tbody>' +
-          '</table>' +
-        '</div>' +
-        '<div style="display:flex;gap:10px;margin-top:14px">' +
-          '<button id="pw-close" style="flex:1;padding:12px 14px;border:0;border-radius:10px;cursor:pointer;background:#5b5bd6;color:#fff">Закрити</button>' +
-        '</div>';
-
-      var cleanup = function() { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
-
-      document.body.append(overlay, box);
-      document.body.style.overflow = "hidden";
-
-      box.querySelector("#pw-close")?.addEventListener("click", cleanup);
-      overlay.addEventListener("click", cleanup);
-    };
-
-    // === Hotkey Ctrl+Alt+P — Show current passwords
-    document.addEventListener("keydown", function (e) {
-      try {
-        if (e && e.ctrlKey && e.altKey && (e.key === "p" || e.key === "P")) {
-          e.preventDefault();
-          showPasswordsHelp();
-        }
-      } catch(_) {}
-    });
-
-    /* ===== /Explorer Modules Guard ===== */
-
   })();
   `
 )
