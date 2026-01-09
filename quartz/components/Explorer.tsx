@@ -1,3 +1,4 @@
+
 import { QuartzComponent, QuartzComponentConstructor, QuartzComponentProps } from "./types"
 import style from "./styles/explorer.scss"
 
@@ -30,16 +31,13 @@ const defaultOptions: Options = {
     return node
   },
   sortFn: (a, b) => {
-    // Sort order: folders first, then files. Sort folders and files alphabeticall
+    // Sort order: folders first, then files. Sort folders and files alphabetically
     if ((!a.isFolder && !b.isFolder) || (a.isFolder && b.isFolder)) {
-      // numeric: true: Whether numeric collation should be used, such that "1" < "2" < "10"
-      // sensitivity: "base": Only strings that differ in base letters compare as unequal. Examples: a ≠ b, a = á, a = A
       return a.displayName.localeCompare(b.displayName, undefined, {
         numeric: true,
         sensitivity: "base",
       })
     }
-
     if (!a.isFolder && b.isFolder) {
       return 1
     } else {
@@ -84,9 +82,9 @@ export default ((userOpts?: Partial<Options>) => {
             width="24"
             height="24"
             viewBox="0 0 24 24"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             class="lucide-menu"
           >
             <line x1="4" x2="20" y1="12" y2="12" />
@@ -94,6 +92,7 @@ export default ((userOpts?: Partial<Options>) => {
             <line x1="4" x2="20" y1="18" y2="18" />
           </svg>
         </button>
+
         <button
           type="button"
           class="title-button explorer-toggle desktop-explorer"
@@ -108,39 +107,28 @@ export default ((userOpts?: Partial<Options>) => {
             viewBox="5 8 14 8"
             fill="none"
             stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             class="fold"
           >
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </button>
+
         <div class="explorer-content" aria-expanded={false}>
           <OverflowList class="explorer-ul" />
         </div>
+
         <template id="template-file">
           <li>
             <a href="#"></a>
           </li>
         </template>
+
         <template id="template-folder">
           <li>
             <div class="folder-container">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="5 8 14 8"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                class="folder-icon"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
               <div>
                 <button class="folder-button">
                   <span class="folder-title"></span>
