@@ -195,8 +195,10 @@ Explorer.afterDOMLoaded = concatenateResources(
     const isModuleFolder = (name) => {
       if (!name) return false;
       const t = name.trim();
-      // Оновити перевірку для нових назв папок
-      return /^\d+\.\s*[A-Za-zа-яА-Я]+/i.test(t); // Може бути простим форматом для числових імен з текстом
+      // Перевіряємо formato: число.пробіл текст (як "2. Dashboard", "4. Инвентарь")
+      const match = /^\d+\.\s*(.+)$/i.test(t);
+      console.log("  isModuleFolder regex test для '" + t + "':", match);
+      return match;
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
@@ -338,7 +340,7 @@ Explorer.afterDOMLoaded = concatenateResources(
     function getModuleFromPath() {
       try {
         var path = decodeURIComponent(location.pathname || "");
-        var first = path.replace(/^\/+/, "").split("/")[0] || "";
+        var first = path.split("/").filter(Boolean)[0] || "";
         if (!first) return null;
         var candidate = first.replace(/-/g, " ").replace(/_/g, " ").trim();
         if (isModuleFolder(candidate)) return candidate;
@@ -488,6 +490,8 @@ Explorer.afterDOMLoaded = concatenateResources(
       var folderName = titleEl.textContent ? titleEl.textContent.trim() : "";
       if (!folderName) return;
 
+      console.log("🔍 Клік на папку:", folderName, "| isModule:", isModuleFolder(folderName), "| hasAccess:", hasAccess(folderName));
+
       if (!isModuleFolder(folderName)) return;
       if (hasAccess(folderName)) return;
 
@@ -518,13 +522,14 @@ Explorer.afterDOMLoaded = concatenateResources(
       try {
         var computeHomePathV1 = function () {
           var parts = (location.pathname || "/").split("/").filter(Boolean);
-          if (parts.length === 0 || /^\d+/.test(parts[0]) || /^модуль|module/i.test(decodeURIComponent(parts[0]).replace(/-/g," "))) return "/";
+          var first = parts[0] ? decodeURIComponent(parts[0]).replace(/-/g, " ") : "";
+          if (parts.length === 0 || /^[0-9]+/.test(parts[0]) || /модуль|module/i.test(first)) return "/";
           return "/" + parts[0] + "/";
         };
         var HOME = computeHomePathV1();
 
         var path = decodeURIComponent(location.pathname || "");
-        var first = path.replace(/^\/+/, "").split("/")[0] || "";
+        var first = path.split("/").filter(Boolean)[0] || "";
         if (!first) return;
 
         var normalized = decodeURIComponent(first).replace(/-/g, " ").trim();
