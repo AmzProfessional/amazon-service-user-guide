@@ -283,6 +283,7 @@ Explorer.afterDOMLoaded = concatenateResources(
 
       var rows = uniq.map(function (name) {
         var pw = passwordForModule(name);
+        console.log("showPasswordsHelp: name='" + name + "' -> password=" + pw);
         return '<tr><td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff; white-space:nowrap;">' + name + '</td>' +
                '<td style="padding:6px 10px;border-bottom:1px solid #3a3a44; color:#fff;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;">' + pw + '</td></tr>';
       }).join("");
