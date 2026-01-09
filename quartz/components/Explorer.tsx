@@ -195,7 +195,8 @@ Explorer.afterDOMLoaded = concatenateResources(
     const isModuleFolder = (name) => {
       if (!name) return false;
       const t = name.trim();
-      return /^\\s*\\d+(?:\\.\\d+)?\\s*(модуль|module)/i.test(t) || /^(модуль|module)\\s*\\d+(?:\\.\\d+)?/i.test(t);
+      // Оновити перевірку для нових назв папок
+      return /^\\d+\.\s*[A-Za-zа-яА-Я]+/i.test(t); // Може бути простим форматом для числових імен з текстом
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
