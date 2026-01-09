@@ -153,14 +153,11 @@ Explorer.afterDOMLoaded = concatenateResources(
   script,
   overflowListAfterDOMLoaded,
   `
-  /* ===== Explorer Modules Guard (ALL modules) + robust 2s access monitor ===== */
+  /* ===== Explorer Modules Guard (ALL modules) + robust access control ===== */
   (function () {
-    const PERIOD_DAYS = 14;
     const SALT = "AMZ-Quartz-Guard-2025-01";
 
     const nowMs = () => Date.now();
-    const periodIndex = () => Math.floor(nowMs() / (PERIOD_DAYS * 86400e3));
-    const periodEndISO = () => new Date((periodIndex() + 1) * PERIOD_DAYS * 86400e3).toISOString();
 
     const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     function gen8(seed) {
@@ -183,11 +180,11 @@ Explorer.afterDOMLoaded = concatenateResources(
     }
 
     function passwordForModule(folderName) {
-      const seed = SALT + "::MODULE::" + folderName + "::p" + periodIndex();
+      const seed = SALT + "::MODULE::" + folderName;
       return gen8(seed);
     }
     function globalPassword() {
-      const seed = SALT + "::GLOBAL::p" + periodIndex();
+      const seed = SALT + "::GLOBAL::";
       return gen8(seed);
     }
 
@@ -206,21 +203,17 @@ Explorer.afterDOMLoaded = concatenateResources(
       return dotIndex === 1 || dotIndex === 2;
     };
 
-    const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
+    const accessKey = (folderName) => 'moduleAccess::' + folderName;
     const hasAccess = (folderName) => {
       try {
         const raw = localStorage.getItem(accessKey(folderName));
         if (!raw) return false;
         const data = JSON.parse(raw);
-        const granted = !!data.granted;
-        const expiresAt = data.expiresAt ? new Date(data.expiresAt).getTime() : 0;
-        if (!granted) return false;
-        if (expiresAt && expiresAt < nowMs()) return false;
-        return true;
+        return !!data.granted;
       } catch { return false; }
     };
     const grantAccess = (folderName) => {
-      localStorage.setItem(accessKey(folderName), JSON.stringify({ granted: true, expiresAt: periodEndISO() }));
+      localStorage.setItem(accessKey(folderName), JSON.stringify({ granted: true }));
     };
 
     const mkOverlay = (blur) => {
@@ -253,8 +246,7 @@ Explorer.afterDOMLoaded = concatenateResources(
         '<div style="display:flex;gap:10px;margin-top:14px">' +
           '<button id="module-ok" style="' + primaryBtn + '">Увійти</button>' +
           '<button id="module-cancel" style="' + secondaryBtn + '">Скасувати</button>' +
-        '</div>' +
-        '<div style="margin-top:10px;opacity:.9;font-size:.9em">Доступ збережеться до кінця поточного ' + PERIOD_DAYS + '-денного періоду.</div>';
+        '</div>';
 
       var cleanup = function() { document.body.style.overflow = ""; overlay.remove(); box.remove(); };
 
@@ -297,10 +289,9 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (!rows) rows = '<tr><td colspan="2" style="padding:10px;opacity:.8">Модулі не знайдені на цій сторінці.</td></tr>';
 
       var gpw = globalPassword();
-      var gpwUntil = periodEndISO();
 
       box.innerHTML =
-        '<h3 style="margin:0 0 12px 0;">Актуальні паролі (цього ' + PERIOD_DAYS + '-денного періоду)</h3>' +
+        '<h3 style="margin:0 0 12px 0;">Актуальні паролі модулів</h3>' +
         '<div style="max-height:min(60vh,480px);overflow:auto;border:1px solid #3a3a44;border-radius:10px">' +
           '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
             '<thead><tr>' +
@@ -311,7 +302,7 @@ Explorer.afterDOMLoaded = concatenateResources(
           '</table>' +
         '</div>' +
         '<div style="margin-top:12px;padding:10px 12px;border:1px dashed #54545f;border-radius:10px;background:#23232b;">' +
-          '<div style="font-weight:600;margin-bottom:6px;">Глобальний пароль (діє до ' + gpwUntil.replace("T"," ").replace("Z"," UTC") + '):</div>' +
+          '<div style="font-weight:600;margin-bottom:6px;">Глобальний пароль:</div>' +
           '<div style="display:flex;gap:8px;align-items:center;">' +
             '<div id="gpw-val" style="flex:1;padding:8px 10px;border:1px solid #3a3a44;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">' + gpw + '</div>' +
             '<button id="gp-copy" style="padding:10px 12px;border:0;border-radius:8px;cursor:pointer;background:#5b5bd6;color:#fff">Скопіювати</button>' +
