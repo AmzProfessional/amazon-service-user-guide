@@ -195,10 +195,11 @@ Explorer.afterDOMLoaded = concatenateResources(
     const isModuleFolder = (name) => {
       if (!name) return false;
       const t = name.trim();
-      // Перевіряємо formato: число.пробіл текст (як "2. Dashboard", "4. Инвентарь")
-      const match = /^\d+\.\s*(.+)$/i.test(t);
-      console.log("  isModuleFolder regex test для '" + t + "':", match);
-      return match;
+      // Перевіряємо формат: число.пробіл текст (як "2. Dashboard", "4. Инвентарь")
+      // Найпростіший спосіб - перевіряємо наявність цифр на початку та точки
+      const hasNumberDot = t.match(/^\d+\./);
+      console.log("  isModuleFolder для '" + t + "':", !!hasNumberDot);
+      return !!hasNumberDot;
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
