@@ -200,7 +200,10 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (firstChar < 48 || firstChar > 57) return false;
       // Перевіримо чи другой або третій символ - це крапка
       const dotIndex = t.indexOf('.');
-      return dotIndex === 1 || dotIndex === 2;
+      const hasNumberDot = dotIndex === 1 || dotIndex === 2;
+      if (!hasNumberDot) return false;
+      // ВАЖЛИВО: Папки, що починаються з "1." - ВІЛЬНІ від паролю, всі інші - під захистом
+      return !t.startsWith("1.");
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName;
@@ -396,7 +399,7 @@ Explorer.afterDOMLoaded = concatenateResources(
           if (ok) {
             try { grantAccess(moduleName); } catch {}
             hideBlockingOverlay();
-            try { location.reload(); } catch {}
+            // НЕ перезавантажуємо - просто заховуємо оверлей
           } else {
             try { location.href = computeHomePath(); } catch {}
           }
@@ -409,11 +412,8 @@ Explorer.afterDOMLoaded = concatenateResources(
     }
 
     function startStableAccessMonitor() {
-      // миттєва перевірка
+      // миттєва перевірка при завантаженні
       setTimeout(function(){ enforceAccess({ promptIfMissing: true }); }, 50);
-
-      // інтервал 2с
-      setInterval(function(){ enforceAccess({ promptIfMissing: true }); }, 2000);
 
       // bfcache: повернення/вперед
       window.addEventListener("pageshow", function(e){
