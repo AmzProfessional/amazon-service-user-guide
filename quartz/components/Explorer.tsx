@@ -196,10 +196,16 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (!name) return false;
       const t = name.trim();
       // Перевіряємо формат: число.пробіл текст (як "2. Dashboard", "4. Инвентарь")
-      // Найпростіший спосіб - перевіряємо наявність цифр на початку та точки
-      const hasNumberDot = t.match(/^\d+\./);
-      console.log("  isModuleFolder для '" + t + "':", !!hasNumberDot);
-      return !!hasNumberDot;
+      // Просто перевіремо чи є крапка у перших 2-3 символах
+      if (t.length < 3) return false;
+      const firstChar = t.charCodeAt(0);
+      // Перевіримо чи першій символ - цифра (коди 48-57)
+      if (firstChar < 48 || firstChar > 57) return false;
+      // Перевіримо чи другой або третій символ - це крапка
+      const dotIndex = t.indexOf('.');
+      const isModule = dotIndex === 1 || dotIndex === 2;
+      console.log("  isModuleFolder для '" + t + "':", isModule, "(dotIndex=" + dotIndex + ")");
+      return isModule;
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
