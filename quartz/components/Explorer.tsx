@@ -269,7 +269,6 @@ Explorer.afterDOMLoaded = concatenateResources(
           // Відкриття модального вікна для введення пароля
           showPasswordModal(folderName).then((accessGranted) => {
             if (accessGranted) {
-              console.log("Доступ дозволено до папки: " + folderName);
               // Якщо пароль вірний, дозволяємо перехід
               window.location.href = clickedElement.closest("a").href;
             }
