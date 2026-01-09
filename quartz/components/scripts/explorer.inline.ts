@@ -119,6 +119,8 @@ function createFolderNode(
     a.dataset.for = folderPath
     a.className = "folder-title"
     a.textContent = node.displayName
+    // Mark as module-aware link so password guard can intercept it
+    a.dataset.isModuleLink = "true"
     button.replaceWith(a)
   } else {
     const span = titleContainer.querySelector(".folder-title") as HTMLElement

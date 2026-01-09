@@ -196,7 +196,7 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (!name) return false;
       const t = name.trim();
       // Оновити перевірку для нових назв папок
-      return /^\\d+\.\s*[A-Za-zа-яА-Я]+/i.test(t); // Може бути простим форматом для числових імен з текстом
+      return /^\d+\.\s*[A-Za-zа-яА-Я]+/i.test(t); // Може бути простим форматом для числових імен з текстом
     };
 
     const accessKey = (folderName) => 'moduleAccess::' + folderName + '::p' + periodIndex();
@@ -338,7 +338,7 @@ Explorer.afterDOMLoaded = concatenateResources(
     function getModuleFromPath() {
       try {
         var path = decodeURIComponent(location.pathname || "");
-        var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+        var first = path.replace(/^\/+/, "").split("/")[0] || "";
         if (!first) return null;
         var candidate = first.replace(/-/g, " ").replace(/_/g, " ").trim();
         if (isModuleFolder(candidate)) return candidate;
@@ -354,7 +354,7 @@ Explorer.afterDOMLoaded = concatenateResources(
     function computeHomePath() {
       try {
         var parts = (location.pathname || "/").split("/").filter(Boolean);
-        if (parts.length === 0 || /^\\d+/.test(parts[0]) || /^модуль|module/i.test(decodeURIComponent(parts[0]).replace(/-/g," "))) return "/";
+        if (parts.length === 0 || /^\d+/.test(parts[0]) || /^модуль|module/i.test(decodeURIComponent(parts[0]).replace(/-/g," "))) return "/";
         return "/" + parts[0] + "/";
       } catch { return "/"; }
     }
@@ -470,21 +470,28 @@ Explorer.afterDOMLoaded = concatenateResources(
       } catch(_) {}
     });
 
-    // === Перехоплення кліків у фазі capture на .explorer (як у v1)
-    document.querySelector(".explorer")?.addEventListener("click", async function (ev) {
+    // === Глобальний обробник для всіх кліків на .folder-title (модулі)
+    document.addEventListener("click", async function (ev) {
       var el = ev.target;
       if (!(el instanceof Element)) return;
 
-      var li = el.closest("li");
-      if (!li) return;
+      // Шукаємо .folder-title у батька або в самому елементі
+      var titleEl = null;
+      if (el.classList.contains("folder-title")) {
+        titleEl = el;
+      } else if (el.closest(".folder-title")) {
+        titleEl = el.closest(".folder-title");
+      }
+      
+      if (!titleEl) return;
 
-      var titleEl = li.querySelector(".folder-title");
-      var folderName = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "";
+      var folderName = titleEl.textContent ? titleEl.textContent.trim() : "";
       if (!folderName) return;
 
       if (!isModuleFolder(folderName)) return;
       if (hasAccess(folderName)) return;
 
+      // ВАЖЛИВО: Зупиняємо подальшу навігацію
       ev.preventDefault();
       ev.stopPropagation();
 
@@ -493,34 +500,17 @@ Explorer.afterDOMLoaded = concatenateResources(
         grantAccess(folderName);
         requestAnimationFrame(function () {
           // Якщо це посилання (link behavior), переходимо за href
-          if (titleEl && titleEl instanceof HTMLAnchorElement) {
+          if (titleEl instanceof HTMLAnchorElement) {
             var href = titleEl.getAttribute("href");
             if (href) {
               try { location.href = href; } catch {}
             }
           } else {
             // Для toggle behavior - дублюємо клік
-            titleEl && titleEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+            try { titleEl.dispatchEvent(new MouseEvent("click", { bubbles: true })); } catch {}
           }
         });
       }
-    }, true);
-
-    // === Запобігання прямому переходу за посиланням у модулі без паролю
-    document.addEventListener("click", function(ev) {
-      var el = ev.target;
-      if (!(el instanceof HTMLAnchorElement)) return;
-      if (!el.classList.contains("folder-title")) return;
-
-      var li = el.closest("li");
-      if (!li) return;
-
-      var folderName = el.textContent ? el.textContent.trim() : "";
-      if (!folderName || !isModuleFolder(folderName)) return;
-      if (hasAccess(folderName)) return;
-
-      ev.preventDefault();
-      ev.stopPropagation();
     }, true);
 
     // === Guard прямих лінків у середину модуля (як у v1)
@@ -528,13 +518,13 @@ Explorer.afterDOMLoaded = concatenateResources(
       try {
         var computeHomePathV1 = function () {
           var parts = (location.pathname || "/").split("/").filter(Boolean);
-          if (parts.length === 0 || /^\\d+/.test(parts[0]) || /^модуль|module/i.test(decodeURIComponent(parts[0]).replace(/-/g," "))) return "/";
+          if (parts.length === 0 || /^\d+/.test(parts[0]) || /^модуль|module/i.test(decodeURIComponent(parts[0]).replace(/-/g," "))) return "/";
           return "/" + parts[0] + "/";
         };
         var HOME = computeHomePathV1();
 
         var path = decodeURIComponent(location.pathname || "");
-        var first = path.replace(/^\\/+/, "").split("/")[0] || "";
+        var first = path.replace(/^\/+/, "").split("/")[0] || "";
         if (!first) return;
 
         var normalized = decodeURIComponent(first).replace(/-/g, " ").trim();
