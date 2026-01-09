@@ -492,9 +492,35 @@ Explorer.afterDOMLoaded = concatenateResources(
       if (ok) {
         grantAccess(folderName);
         requestAnimationFrame(function () {
-          titleEl && titleEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          // Якщо це посилання (link behavior), переходимо за href
+          if (titleEl && titleEl instanceof HTMLAnchorElement) {
+            var href = titleEl.getAttribute("href");
+            if (href) {
+              try { location.href = href; } catch {}
+            }
+          } else {
+            // Для toggle behavior - дублюємо клік
+            titleEl && titleEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+          }
         });
       }
+    }, true);
+
+    // === Запобігання прямому переходу за посиланням у модулі без паролю
+    document.addEventListener("click", function(ev) {
+      var el = ev.target;
+      if (!(el instanceof HTMLAnchorElement)) return;
+      if (!el.classList.contains("folder-title")) return;
+
+      var li = el.closest("li");
+      if (!li) return;
+
+      var folderName = el.textContent ? el.textContent.trim() : "";
+      if (!folderName || !isModuleFolder(folderName)) return;
+      if (hasAccess(folderName)) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
     }, true);
 
     // === Guard прямих лінків у середину модуля (як у v1)
