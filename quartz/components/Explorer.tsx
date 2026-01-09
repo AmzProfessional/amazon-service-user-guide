@@ -144,6 +144,8 @@ export default ((userOpts?: Partial<Options>) => {
     )
   }
 
+Explorer.css = style
+
 Explorer.afterDOMLoaded = concatenateResources(
   script,
   overflowListAfterDOMLoaded,
@@ -277,6 +279,7 @@ Explorer.afterDOMLoaded = concatenateResources(
   })();
   `
 )
+
 
   return Explorer
 }) satisfies QuartzComponentConstructor
