@@ -159,33 +159,31 @@ Explorer.afterDOMLoaded = concatenateResources(
 
     const nowMs = () => Date.now();
 
-    const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    function gen8(seed) {
-      let h1 = 0x811c9dc5, h2 = 0x811c9dc5;
-      for (let i = 0; i < seed.length; i++) {
-        const c = seed.charCodeAt(i);
-        h1 ^= c; h1 = Math.imul(h1, 0x01000193) >>> 0;
-        h2 ^= (c + (i<<1)); h2 = Math.imul(h2, 0x01000193) >>> 0;
-      }
-      const out = [];
-      let a = h1 ^ (h2 << 1);
-      let b = h2 ^ (h1 << 1);
-      for (let i = 0; i < 8; i++) {
-        a = (Math.imul(a ^ (a >>> 13), 0x85ebca6b) + i) >>> 0;
-        b = (Math.imul(b ^ (b >>> 16), 0xc2b2ae35) + (i<<2)) >>> 0;
-        const v = (a ^ (b >>> 1)) >>> 0;
-        out.push(CHARS[v % 62]);
-      }
-      return out.join("");
-    }
+    // === Статичні паролі для кожного модуля
+    const MODULE_PASSWORDS = {
+      "2. Dashboard": "Dsh8KqM9",
+      "3. Поставщики услуг": "PrvSvc4X",
+      "3. Service Provider": "Vcd5rc6W",
+      "4. Инвентарь": "Inv2Wsx7",
+      "5. Запуск продукта": "Lnch5Zaq",
+      "6. Биржа товаров": "Exch9Plp",
+      "7. Заказы": "Ord3Mnd8",
+      "8. Мой склад": "Wrh6Fgh2",
+      "9. Мои партии": "Batch7Kjh",
+      "10. Магазины": "Shop4Bnm1",
+      "11. Финансы": "Fin8Vcd5",
+      "12. Уведомления": "Notif3Wsx",
+      "13. Поддержка": "Supp2Qwe",
+      "14. Сообщения": "Msg9Asd6",
+      "15. Версия платформы": "Ver5Zxc4"
+    };
+    const GLOBAL_PASSWORD = "Global8Df";
 
     function passwordForModule(folderName) {
-      const seed = SALT + "::MODULE::" + folderName;
-      return gen8(seed);
+      return MODULE_PASSWORDS[folderName] || GLOBAL_PASSWORD;
     }
     function globalPassword() {
-      const seed = SALT + "::GLOBAL::";
-      return gen8(seed);
+      return GLOBAL_PASSWORD;
     }
 
     // === ОРИГІНАЛ з v1: строгий детектор модулів (НЕ міняємо)
