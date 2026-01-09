@@ -293,7 +293,7 @@ Explorer.afterDOMLoaded = concatenateResources(
       var gpw = globalPassword();
 
       box.innerHTML =
-        '<h3 style="margin:0 0 12px 0;">Актуальні паролі модулів</h3>' +
+        '<h3 style="margin:0 0 12px 0;">Актуальные пароли модулей</h3>' +
         '<div style="max-height:min(60vh,480px);overflow:auto;border:1px solid #3a3a44;border-radius:10px">' +
           '<table style="width:100%;border-collapse:collapse;font-size:14px">' +
             '<thead><tr>' +
@@ -304,7 +304,7 @@ Explorer.afterDOMLoaded = concatenateResources(
           '</table>' +
         '</div>' +
         '<div style="margin-top:12px;padding:10px 12px;border:1px dashed #54545f;border-radius:10px;background:#23232b;">' +
-          '<div style="font-weight:600;margin-bottom:6px;">Глобальний пароль:</div>' +
+          '<div style="font-weight:600;margin-bottom:6px;">Глобальный пароль:</div>' +
           '<div style="display:flex;gap:8px;align-items:center;">' +
             '<div id="gpw-val" style="flex:1;padding:8px 10px;border:1px solid #3a3a44;border-radius:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">' + gpw + '</div>' +
             '<button id="gp-copy" style="padding:10px 12px;border:0;border-radius:8px;cursor:pointer;background:#5b5bd6;color:#fff">Скопіювати</button>' +
